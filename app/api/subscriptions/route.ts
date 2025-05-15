@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+// Mark this route as dynamically rendered
+export const dynamic = 'force-dynamic'
+
+// Initialize Supabase client with fallback values
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://gzdezyfnxtekbnuokgpg.supabase.co'
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'missing-key'
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 export async function POST(request: Request) {
