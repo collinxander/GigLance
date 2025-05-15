@@ -1,0 +1,19 @@
+.vercel
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Build files
+.next/
+out/
+
+# IDE files
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
