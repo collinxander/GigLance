@@ -4,6 +4,9 @@ import { headers } from 'next/headers';
 import { NextResponse } from "next/server";
 import { createClient } from '@/lib/supabase/server';
 
+// Mark this route as dynamically rendered
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   const body = await req.text();
   const signature = headers().get('Stripe-Signature') as string;
@@ -14,7 +17,7 @@ export async function POST(req: Request) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      process.env.STRIPE_WEBHOOK_SECRET || 'whsec_missing'
     );
   } catch (error: any) {
     console.error(`Webhook Error: ${error.message}`);
