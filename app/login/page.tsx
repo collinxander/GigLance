@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,7 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Loader2
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -40,7 +41,7 @@ import { motion } from 'framer-motion'
 import { supabase, handleSupabaseError } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function SignIn() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/gigs'
@@ -322,5 +323,20 @@ export default function SignIn() {
         </motion.form>
       </div>
     </div>
+  )
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-10 w-10 animate-spin text-purple-500 mb-4" />
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }

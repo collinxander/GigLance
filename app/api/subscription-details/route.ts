@@ -5,6 +5,9 @@ import { stripe } from '@/lib/stripe'
 import { SUBSCRIPTION_PLANS } from '@/lib/subscription-plans'
 import { Stripe } from 'stripe'
 
+// Mark this route as dynamically rendered
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams

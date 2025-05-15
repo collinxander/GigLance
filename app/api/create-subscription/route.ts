@@ -4,6 +4,9 @@ import { cookies } from 'next/headers'
 import { stripe } from '@/lib/stripe'
 import { SUBSCRIPTION_PLANS } from '@/lib/subscription-plans'
 
+// Mark this route as dynamically rendered
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
