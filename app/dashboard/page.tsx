@@ -31,6 +31,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import SubscriptionPopup from "@/components/stripe/SubscriptionPopup"
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("discover")
@@ -62,6 +63,8 @@ export default function DashboardPage() {
               <Button variant="ghost" size="icon">
                 <MessageSquare className="h-5 w-5" />
               </Button>
+
+              <SubscriptionPopup />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

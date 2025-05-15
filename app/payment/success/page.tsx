@@ -1,104 +1,71 @@
 "use client"
 
-import { useEffect, Suspense, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { usePayment } from '@/components/providers/PaymentProvider'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle2, Loader2 } from 'lucide-react'
-
-function PaymentSuccessContent() {
-  const searchParams = useSearchParams()
-  const { getPaymentHistory } = usePayment()
-  const supabase = createClientComponentClient()
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const refreshPaymentHistory = async () => {
-      try {
-        setIsLoading(true)
-        const paymentIntent = searchParams.get('payment_intent')
-        
-        if (!paymentIntent) {
-          setError("No payment intent found")
-          return
-        }
-        
-        // First, get the user from auth
-        const { data, error: userError } = await supabase.auth.getUser()
-        
-        if (userError || !data.user) {
-          console.error("Error getting user:", userError)
-          setError("Authentication error")
-          return
-        }
-        
-        // Only after confirming user exists, get payment history
-        await getPaymentHistory(data.user.id)
-        
-      } catch (err) {
-        console.error("Error in payment success:", err)
-        setError("Failed to process payment confirmation")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    
-    refreshPaymentHistory()
-  }, [searchParams, supabase, getPaymentHistory])
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-red-500">Payment Processing Error</CardTitle>
-          <CardDescription>
-            There was an issue confirming your payment. Please contact support.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    )
-  }
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-green-500" />
-            <CardTitle>Payment Successful!</CardTitle>
-          </div>
-          <CardDescription>
-            Thank you for your payment. You will receive a confirmation email shortly.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Payment ID: {searchParams.get('payment_intent')}
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
+import Link from 'next/link'
 
 export default function PaymentSuccessPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [loading, setLoading] = useState(true)
+  const sessionId = searchParams.get('session_id')
+
+  useEffect(() => {
+    // Verify the payment was successful (optional)
+    const verifyPayment = async () => {
+      try {
+        if (!sessionId) {
+          // No session ID, redirect to home
+          setTimeout(() => router.push('/'), 5000)
+          return
+        }
+        
+        setLoading(false)
+      } catch (error) {
+        console.error('Error verifying payment:', error)
+        setLoading(false)
+      }
+    }
+
+    verifyPayment()
+  }, [sessionId, router])
+
   return (
-    <Suspense fallback={
-      <div className="container mx-auto px-4 py-8 flex justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-      </div>
-    }>
-      <PaymentSuccessContent />
-    </Suspense>
+    <div className="container max-w-md mx-auto py-16 px-4">
+      <Card className="border-green-200 shadow-md">
+        <CardHeader className="text-center border-b pb-6">
+          <div className="flex justify-center mb-4">
+            <CheckCircle2 className="h-16 w-16 text-green-500" />
+          </div>
+          <CardTitle className="text-2xl text-green-700">Payment Successful!</CardTitle>
+          <CardDescription>Your subscription has been activated.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="text-center">
+              <p className="mb-4">Thank you for subscribing to GigLance.</p>
+              <p className="text-muted-foreground text-sm">
+                You now have access to premium features to help you succeed in your freelancing journey.
+              </p>
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-3">
+          <Button asChild className="w-full">
+            <Link href="/account">Go to your account</Link>
+          </Button>
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/dashboard">Go to dashboard</Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
   )
 } 

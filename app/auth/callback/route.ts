@@ -32,13 +32,39 @@ export async function GET(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     
     if (user) {
-      const { data: profile } = await supabase
+      // Check if profile exists
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('onboarding_completed')
+        .select('id, onboarding_completed')
         .eq('id', user.id)
         .single()
         
-      if (!profile || !profile.onboarding_completed) {
+      if (profileError || !profile) {
+        // New user from Google auth - create initial profile
+        // and redirect to onboarding
+        const { data: metadata } = await supabase.auth.getSession()
+        
+        if (metadata.session?.user.app_metadata.provider === 'google') {
+          // Create profile for new Google user
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              full_name: user.user_metadata.full_name || '',
+              avatar_url: user.user_metadata.avatar_url || null,
+              onboarding_completed: false,
+            })
+            
+          if (insertError) {
+            console.error('Error creating profile:', insertError)
+          }
+        }
+        
+        // Always redirect new users to onboarding
+        return NextResponse.redirect(new URL('/onboarding', request.url))
+      }
+        
+      if (!profile.onboarding_completed) {
         return NextResponse.redirect(new URL('/onboarding', request.url))
       }
     }

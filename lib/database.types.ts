@@ -64,6 +64,11 @@ export interface Database {
           onboarding_completed: boolean
           created_at: string
           updated_at: string
+          stripe_customer_id: string | null
+          payment_status: string | null
+          subscription_status: string | null
+          subscription_price_id: string | null
+          subscription_id: string | null
         }
         Insert: {
           id: string
@@ -93,6 +98,11 @@ export interface Database {
           onboarding_completed?: boolean
           created_at?: string
           updated_at?: string
+          stripe_customer_id?: string | null
+          payment_status?: string | null
+          subscription_status?: string | null
+          subscription_price_id?: string | null
+          subscription_id?: string | null
         }
         Update: {
           id?: string
@@ -122,6 +132,11 @@ export interface Database {
           onboarding_completed?: boolean
           created_at?: string
           updated_at?: string
+          stripe_customer_id?: string | null
+          payment_status?: string | null
+          subscription_status?: string | null
+          subscription_price_id?: string | null
+          subscription_id?: string | null
         }
       }
       interest_categories: {
