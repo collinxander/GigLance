@@ -415,6 +415,47 @@ export interface Database {
           created_at?: string
         }
       }
+      posts: {
+        Row: {
+          id: string
+          user_id: string
+          type: 'image' | 'video' | 'text' | 'link' | 'portfolio'
+          content: string | null
+          media_urls: string[]
+          tags: string[]
+          visibility: 'public' | 'connections' | 'private'
+          likes_count: number
+          comments_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: 'image' | 'video' | 'text' | 'link' | 'portfolio'
+          content?: string | null
+          media_urls?: string[]
+          tags?: string[]
+          visibility?: 'public' | 'connections' | 'private'
+          likes_count?: number
+          comments_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: 'image' | 'video' | 'text' | 'link' | 'portfolio'
+          content?: string | null
+          media_urls?: string[]
+          tags?: string[]
+          visibility?: 'public' | 'connections' | 'private'
+          likes_count?: number
+          comments_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 } 

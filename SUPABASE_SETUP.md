@@ -84,6 +84,32 @@ The Supabase migrations in the `supabase/migrations` directory will create all n
    - `avatars`: For user profile images
    - `attachments`: For message attachments
    - `portfolio`: For portfolio project files
+   - `post-media`: For social media post content (images, videos)
+
+3. Configure bucket policies:
+   - For `post-media`:
+     ```sql
+     -- Allow public access to read files
+     CREATE POLICY "Public Access"
+     ON storage.objects FOR SELECT
+     USING (bucket_id = 'post-media');
+
+     -- Allow authenticated users to upload files
+     CREATE POLICY "Authenticated users can upload files"
+     ON storage.objects FOR INSERT
+     WITH CHECK (
+       bucket_id = 'post-media' AND
+       auth.role() = 'authenticated'
+     );
+
+     -- Allow users to delete their own files
+     CREATE POLICY "Users can delete their own files"
+     ON storage.objects FOR DELETE
+     USING (
+       bucket_id = 'post-media' AND
+       auth.uid() = owner
+     );
+     ```
 
 ### 6. Verify Setup
 
