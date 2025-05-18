@@ -37,6 +37,10 @@ export default function ProfileSetupPage() {
   const [github, setGithub] = useState('')
   const [twitter, setTwitter] = useState('')
 
+  // Add new state variables for looking_for and wants_critique
+  const [lookingFor, setLookingFor] = useState<string[]>([])
+  const [wantsCritique, setWantsCritique] = useState(false)
+
   useEffect(() => {
     const checkSession = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -49,7 +53,7 @@ export default function ProfileSetupPage() {
       // Check user type and interests
       const { data: profile } = await supabase
         .from('profiles')
-        .select('user_type, interests, full_name, avatar_url')
+        .select('user_type, interests, full_name, avatar_url, looking_for, wants_critique')
         .eq('id', user.id)
         .single()
 
@@ -61,6 +65,8 @@ export default function ProfileSetupPage() {
       setUserId(user.id)
       setFullName(profile.full_name || '')
       setAvatarUrl(profile.avatar_url)
+      setLookingFor(profile.looking_for || [])
+      setWantsCritique(profile.wants_critique || false)
       setLoading(false)
     }
 
@@ -110,6 +116,8 @@ export default function ProfileSetupPage() {
             website,
           },
           avatar_url: newAvatarUrl,
+          looking_for: lookingFor,
+          wants_critique: wantsCritique,
           onboarding_completed: true
         })
         .eq('id', userId)
@@ -313,6 +321,25 @@ export default function ProfileSetupPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lookingFor">What are you looking for?</Label>
+                <Input
+                  id="lookingFor"
+                  placeholder="e.g., gigs, collaborations, inspiration"
+                  value={lookingFor.join(', ')}
+                  onChange={(e) => setLookingFor(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="wantsCritique"
+                  checked={wantsCritique}
+                  onCheckedChange={setWantsCritique}
+                />
+                <Label htmlFor="wantsCritique">Would you like to receive critique on your work?</Label>
               </div>
 
               <div className="pt-4 flex justify-between">

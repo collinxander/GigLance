@@ -61,6 +61,20 @@ export async function GET(request: Request) {
           if (insertError) {
             console.error('Error creating profile:', insertError)
           }
+        } else {
+          // Fallback for non-Google users: create a basic profile
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              full_name: user.user_metadata.full_name || '',
+              avatar_url: user.user_metadata.avatar_url || null,
+              onboarding_completed: false,
+            })
+            
+          if (insertError) {
+            console.error('Error creating profile:', insertError)
+          }
         }
         
         // Always redirect new users to onboarding
