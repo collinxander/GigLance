@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL("https://giglance.com"),
+  metadataBase: new URL("https://gig-lance.com"),
   openGraph: {
     type: "website",
     locale: "en_US",
