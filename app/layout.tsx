@@ -10,8 +10,8 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "GigLance - Turn Your Skills Into Paychecks",
-  description: "Get Found, Get Hired, Get Paid. Connect with freelance gigs and side jobs that match your skills and schedule.",
-  keywords: ["freelance", "gigs", "jobs", "remote work", "side hustle", "freelancer", "hiring", "talent"],
+  description: "Get Found, Get Hired, Get Paid. Connect with giglance gigs and side jobs that match your skills and schedule.",
+  keywords: ["giglance", "gigs", "jobs", "remote work", "side hustle", "giglancer", "hiring", "talent"],
   authors: [{ name: "GigLance Team" }],
   creator: "GigLance",
   publisher: "GigLance",
@@ -26,13 +26,13 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://giglance.com",
     title: "GigLance - Turn Your Skills Into Paychecks",
-    description: "Get Found, Get Hired, Get Paid. Connect with freelance gigs and side jobs that match your skills and schedule.",
+    description: "Get Found, Get Hired, Get Paid. Connect with giglance gigs and side jobs that match your skills and schedule.",
     siteName: "GigLance",
   },
   twitter: {
     card: "summary_large_image",
     title: "GigLance - Turn Your Skills Into Paychecks",
-    description: "Get Found, Get Hired, Get Paid. Connect with freelance gigs and side jobs that match your skills and schedule.",
+    description: "Get Found, Get Hired, Get Paid. Connect with giglance gigs and side jobs that match your skills and schedule.",
     creator: "@giglance",
   },
   robots: {

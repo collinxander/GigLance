@@ -3,46 +3,84 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ArrowRight, Briefcase, Star, Users, Rocket, Shield, ChevronRight, Search, Filter, MapPin, DollarSign, Clock } from 'lucide-react'
+import { ArrowRight, Briefcase, Star, Users, Rocket, Shield, ChevronRight, Search, Filter, MapPin, DollarSign, Clock, LucideIcon, TrendingUp, Award, Zap } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-const features = [
-  {
-    title: 'Find Perfect Gigs',
-    description: 'Browse through thousands of gigs that match your skills and preferences.',
-    icon: Briefcase,
-  },
-  {
-    title: 'Connect with Clients',
-    description: 'Build relationships with clients and grow your professional network.',
-    icon: Users,
-  },
-  {
-    title: 'Fast Payments',
-    description: 'Get paid quickly and securely through our trusted payment system.',
-    icon: Rocket,
-  },
-  {
-    title: 'Secure Platform',
-    description: 'Work with confidence on our secure and reliable platform.',
-    icon: Shield,
-  },
-]
+interface Testimonial {
+  id: string
+  quote: string
+  author: string
+  role: string
+  rating: number
+  created_at: string
+}
+
+interface Feature {
+  id: string
+  icon: string
+  title: string
+  description: string
+  created_at: string
+}
 
 interface Category {
   name: string
   count: number
 }
 
+interface SupabaseGig {
+  id: string
+  title: string
+  budget: string
+  category: string
+  location: string
+  duration: string
+  client: {
+    full_name: string
+    avatar_url: string
+  }
+}
+
+interface Stats {
+  activeGigs: number
+  activeGiglancers: number
+  successRate: number
+}
+
 export default function Home() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [popularCategories, setPopularCategories] = useState<Category[]>([])
+  const [trendingGigs, setTrendingGigs] = useState<SupabaseGig[]>([])
+  const [stats, setStats] = useState<Stats>({ activeGigs: 0, activeGiglancers: 0, successRate: 0 })
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
+  const [features, setFeatures] = useState<Feature[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const prefersReducedMotion = useReducedMotion()
   const supabase = createClientComponentClient()
+  const [isHovered, setIsHovered] = useState(false)
+
+  // Map of icon names to Lucide icons
+  const iconMap: { [key: string]: LucideIcon } = {
+    Briefcase,
+    Users,
+    Rocket,
+    Shield,
+    TrendingUp,
+    Award,
+    Zap,
+    Star,
+    Search,
+    Filter,
+    MapPin,
+    DollarSign,
+    Clock,
+    ChevronRight,
+    ArrowRight
+  }
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (prefersReducedMotion) return
@@ -56,17 +94,18 @@ export default function Home() {
   }, [handleMouseMove, prefersReducedMotion])
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
-        const { data, error } = await supabase
+        // Fetch categories
+        const { data: categoryData, error: categoryError } = await supabase
           .from('gigs')
           .select('category')
           .eq('status', 'open')
 
-        if (error) throw error
+        if (categoryError) throw categoryError
 
         // Count occurrences of each category
-        const categoryCounts = data.reduce((acc: { [key: string]: number }, gig) => {
+        const categoryCounts = categoryData.reduce((acc: { [key: string]: number }, gig) => {
           acc[gig.category] = (acc[gig.category] || 0) + 1
           return acc
         }, {})
@@ -78,15 +117,106 @@ export default function Home() {
           .slice(0, 6) // Get top 6 categories
 
         setPopularCategories(categories)
+
+        // Fetch trending gigs
+        const { data: gigsData, error: gigsError } = await supabase
+          .from('gigs')
+          .select(`
+            id,
+            title,
+            budget,
+            category,
+            location,
+            duration,
+            client:profiles!inner(full_name, avatar_url)
+          `)
+          .eq('status', 'open')
+          .order('created_at', { ascending: false })
+          .limit(3)
+
+        if (gigsError) throw gigsError
+
+        // Fetch statistics
+        const { data: statsData, error: statsError } = await supabase
+          .from('gigs')
+          .select('status, completed_at')
+          .eq('status', 'open')
+
+        const { data: completedGigs, error: completedError } = await supabase
+          .from('gigs')
+          .select('status, completed_at')
+          .eq('status', 'completed')
+
+        const { data: giglancers, error: giglancersError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_type', 'creative')
+          .eq('is_active', true)
+
+        if (statsError || completedError || giglancersError) throw statsError || completedError || giglancersError
+
+        // Calculate success rate
+        const totalGigs = (statsData?.length || 0) + (completedGigs?.length || 0)
+        const successRate = totalGigs > 0 
+          ? Math.round((completedGigs?.length || 0) / totalGigs * 100)
+          : 0
+
+        setStats({
+          activeGigs: statsData?.length || 0,
+          activeGiglancers: giglancers?.length || 0,
+          successRate
+        })
+
+        // Fetch testimonials
+        const { data: testimonialsData, error: testimonialsError } = await supabase
+          .from('testimonials')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(3)
+
+        if (testimonialsError) throw testimonialsError
+        setTestimonials(testimonialsData || [])
+
+        // Fetch features
+        const { data: featuresData, error: featuresError } = await supabase
+          .from('features')
+          .select('*')
+          .order('created_at', { ascending: true })
+
+        if (featuresError) throw featuresError
+        setFeatures(featuresData || [])
+        
+        // Transform the data to match the TrendingGig interface
+        const transformedGigs = (gigsData || []).map(gig => ({
+          id: String(gig.id),
+          title: String(gig.title),
+          budget: String(gig.budget),
+          category: String(gig.category),
+          location: String(gig.location),
+          duration: String(gig.duration),
+          client: {
+            full_name: String(gig.client[0]?.full_name || ''),
+            avatar_url: String(gig.client[0]?.avatar_url || '')
+          }
+        }))
+
+        setTrendingGigs(transformedGigs)
       } catch (error) {
-        console.error('Error fetching categories:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchCategories()
+    fetchData()
   }, [])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      window.location.href = `/gigs?search=${encodeURIComponent(searchQuery.trim())}`
+    }
+  }
 
   const animationProps = {
     initial: prefersReducedMotion ? {} : { opacity: 0, y: 20 },
@@ -97,126 +227,219 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        {/* Animated background */}
-        {!prefersReducedMotion && (
-          <div
-            className="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-indigo-900/20"
-            style={{
-              backgroundImage: `radial-gradient(circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(99, 102, 241, 0.15) 0%, transparent 50%)`,
-              willChange: 'background-image',
-            }}
-          />
-        )}
-
-        {/* Content */}
-        <div className="relative z-10 container px-4 sm:px-6 lg:px-8 text-center">
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 text-center">
           <motion.div
-            {...animationProps}
-            className="max-w-4xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400">
-              GIGLANCE
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground mb-6">
+              Your Gateway to{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                GigLance Success
+              </span>
             </h1>
-            <p className="text-lg md:text-xl lg:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto">
-              Turn your skills into paychecks. Connect with freelance gigs and side jobs that match your expertise.
+            <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+              Connect with top clients, showcase your skills, and build your giglance career with GigLance.
             </p>
-
-            {/* Search Bar */}
-            <div className="max-w-2xl mx-auto mb-8">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  placeholder="Search for gigs, skills, or keywords..."
-                  className="pl-12 py-6 text-lg"
-                />
-                <Button className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                  Search
-                </Button>
-              </div>
-            </div>
-
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/gigs"
-                className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg overflow-hidden transition-all duration-300 hover:scale-105"
+                href="/signup"
+                className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-colors duration-300"
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
               >
-                <span className="relative z-10">Find Gigs</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
+                Get Started
+                <ArrowRight
+                  className={`ml-2 h-5 w-5 transition-transform duration-300 ${
+                    isHovered ? "translate-x-1" : ""
+                  }`}
+                />
               </Link>
               <Link
-                href="/post"
-                className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-foreground border-2 border-border rounded-lg overflow-hidden transition-all duration-300 hover:scale-105"
+                href="/login"
+                className="inline-flex items-center justify-center px-6 py-3 border border-border text-base font-medium rounded-lg text-foreground bg-background hover:bg-accent/50 transition-colors duration-300"
               >
-                <span className="relative z-10">Post a Gig</span>
-                <div className="absolute inset-0 bg-muted opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                Sign In
               </Link>
             </div>
           </motion.div>
         </div>
-
-        {/* Scroll indicator */}
-        {!prefersReducedMotion && (
-          <motion.div
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
-            animate={{ y: [0, 10, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            <ChevronRight className="h-6 w-6 text-muted-foreground rotate-90" />
-          </motion.div>
-        )}
       </div>
 
-      {/* Popular Categories Section */}
-      <div className="py-24 bg-muted/50">
-        <div className="container px-4 sm:px-6 lg:px-8">
-          <motion.div
-            {...animationProps}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
+      {/* Search Section */}
+      <div className="py-12 bg-muted/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto">
+            <form onSubmit={handleSearch} className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                placeholder="Search for gigs, skills, or keywords..."
+                className="pl-10 py-6 text-lg bg-background border-input text-foreground"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <Button
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-700"
+              >
+                Search
+              </Button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Section */}
+      <div className="py-12 bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="p-6 rounded-lg bg-card border shadow-sm"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-purple-500/10">
+                  <TrendingUp className="h-6 w-6 text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.activeGigs.toLocaleString()}</p>
+                  <p className="text-muted-foreground">Active Gigs</p>
+                </div>
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="p-6 rounded-lg bg-card border shadow-sm"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-purple-500/10">
+                  <Users className="h-6 w-6 text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.activeGiglancers.toLocaleString()}</p>
+                  <p className="text-muted-foreground">Active Giglancers</p>
+                </div>
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="p-6 rounded-lg bg-card border shadow-sm"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-purple-500/10">
+                  <Award className="h-6 w-6 text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.successRate}%</p>
+                  <p className="text-muted-foreground">Success Rate</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+
+      {/* Popular Categories */}
+      <div className="py-12 bg-muted/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
               Popular Categories
             </h2>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-              Explore our most popular categories and find the perfect gig for you
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Browse through our most active categories and find the perfect gig for your skills.
             </p>
-          </motion.div>
-
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
-              // Loading skeleton
-              Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="h-6 bg-muted rounded w-1/3"></div>
-                        <div className="h-4 bg-muted rounded w-1/4"></div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))
+              <div className="col-span-full text-center text-muted-foreground">Loading categories...</div>
             ) : (
               popularCategories.map((category, index) => (
                 <motion.div
                   key={category.name}
-                  initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
-                  whileInView={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
-                  viewport={{ once: true }}
                 >
-                  <Link href={`/gigs?category=${category.name.toLowerCase()}`}>
-                    <Card className="hover:shadow-lg transition-shadow duration-300">
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xl font-semibold">{category.name}</h3>
-                          <span className="text-muted-foreground">{category.count} gigs</span>
-                        </div>
-                      </CardContent>
-                    </Card>
+                  <Link
+                    href={`/gigs?category=${encodeURIComponent(category.name)}`}
+                    className="block p-6 rounded-lg bg-card border hover:border-purple-500/50 transition-colors duration-300"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xl font-semibold text-foreground">
+                        {category.name}
+                      </h3>
+                      <span className="text-muted-foreground">{category.count} gigs</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-purple-500 mt-2" />
+                  </Link>
+                </motion.div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Trending Gigs */}
+      <div className="py-12 bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Trending Gigs
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Check out the latest and most popular gigs on our platform.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {loading ? (
+              <div className="col-span-full text-center text-muted-foreground">Loading trending gigs...</div>
+            ) : (
+              trendingGigs.map((gig, index) => (
+                <motion.div
+                  key={gig.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                >
+                  <Link
+                    href={`/gigs/${gig.id}`}
+                    className="block p-6 rounded-lg bg-card border hover:border-purple-500/50 transition-colors duration-300"
+                  >
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                        <Zap className="h-5 w-5 text-purple-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground line-clamp-1">
+                          {gig.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{gig.category}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <DollarSign className="h-4 w-4 mr-1" />
+                        {gig.budget}
+                      </div>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        {gig.location}
+                      </div>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {gig.duration}
+                      </div>
+                    </div>
                   </Link>
                 </motion.div>
               ))
@@ -226,70 +449,106 @@ export default function Home() {
       </div>
 
       {/* Features Section */}
-      <div className="py-24">
-        <div className="container px-4 sm:px-6 lg:px-8">
-          <motion.div
-            {...animationProps}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
-              Everything You Need
+      <div className="py-20 bg-muted/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Everything You Need to Succeed
             </h2>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-              Our platform provides all the tools and features you need to succeed
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Our platform provides all the tools and features you need to build a successful giglance career.
             </p>
-          </motion.div>
-
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
-                whileInView={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="relative group"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300" />
-                <div className="relative p-6 bg-card rounded-2xl border hover:border-primary/50 transition-all duration-300">
-                  <feature.icon className="h-8 w-8 text-primary mb-4" />
-                  <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                  <p className="text-muted-foreground">{feature.description}</p>
-                </div>
-              </motion.div>
-            ))}
+            {loading ? (
+              <div className="col-span-full text-center text-muted-foreground">Loading features...</div>
+            ) : (
+              features.map((feature, index) => {
+                const Icon = iconMap[feature.icon]
+                return (
+                  <motion.div
+                    key={feature.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className="p-6 rounded-lg bg-card border hover:border-purple-500/50 transition-colors duration-300"
+                  >
+                    <div className="text-purple-500 mb-4">
+                      {Icon && <Icon className="h-6 w-6" aria-hidden="true" />}
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground mb-2">
+                      {feature.title}
+                    </h3>
+                    <p className="text-muted-foreground">{feature.description}</p>
+                  </motion.div>
+                )
+              })
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Testimonials Section */}
+      <div className="py-20 bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Trusted by Giglancers Worldwide
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Join thousands of successful giglancers who have found their dream projects on GigLance.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {loading ? (
+              <div className="col-span-full text-center text-muted-foreground">Loading testimonials...</div>
+            ) : (
+              testimonials.map((testimonial, index) => (
+                <motion.div
+                  key={testimonial.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="p-6 rounded-lg bg-card border"
+                >
+                  <div className="flex items-center mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="h-5 w-5 text-yellow-500" />
+                    ))}
+                  </div>
+                  <p className="text-muted-foreground mb-4">"{testimonial.quote}"</p>
+                  <div>
+                    <p className="text-foreground font-semibold">{testimonial.author}</p>
+                    <p className="text-muted-foreground">{testimonial.role}</p>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
       {/* CTA Section */}
-      <div className="py-24 bg-muted/50">
-        <div className="container px-4 sm:px-6 lg:px-8">
+      <div className="py-20 bg-gradient-to-b from-background to-purple-900/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
-            {...animationProps}
-            viewport={{ once: true }}
-            className="max-w-4xl mx-auto text-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
-              Ready to Get Started?
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Ready to Start Your GigLance Journey?
             </h2>
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join GigLance today and start your journey to success
+            <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Join our community of talented giglancers and start finding your dream projects today.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/signup">
-                <Button size="lg" className="px-8">
-                  Sign up for free
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link href="/gigs">
-                <Button size="lg" variant="outline" className="px-8">
-                  Browse Gigs
-                </Button>
-              </Link>
-            </div>
+            <Link
+              href="/signup"
+              className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-colors duration-300"
+            >
+              Get Started Now
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
           </motion.div>
         </div>
       </div>

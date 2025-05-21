@@ -52,7 +52,7 @@ function PaymentSuccessContent() {
             <div className="text-center">
               <p className="mb-4">Thank you for subscribing to GigLance.</p>
               <p className="text-muted-foreground text-sm">
-                You now have access to premium features to help you succeed in your freelancing journey.
+                You now have access to premium features to help you succeed in your giglancing journey.
               </p>
             </div>
           )}
