@@ -5,8 +5,14 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react"
 import { supabase, handleSupabaseError } from '@/lib/supabase'
+import Avatar from 'react-avatar'
+
+function UserProfileIcon({ fullName }: { fullName: string }) {
+  return <Avatar name={fullName} size="40" round={true} />;
+}
 
 function LoginContent() {
   const router = useRouter()
@@ -23,6 +29,7 @@ function LoginContent() {
   const [checkingSession, setCheckingSession] = useState(true)
   const [resetSent, setResetSent] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
     const checkSession = async () => {
@@ -39,7 +46,7 @@ function LoginContent() {
           // Check if user has completed onboarding
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('onboarding_completed')
+            .select('*')
             .eq('id', session.user.id)
             .single()
 
@@ -49,11 +56,13 @@ function LoginContent() {
             return
           }
 
-          if (!profile?.onboarding_completed) {
-            router.push('/onboarding')
+          if (!profile) {
+            router.push('/create-profile')
           } else {
             router.push(redirectTo)
           }
+
+          setUserId(session.user.id)
         }
       } catch (error) {
         console.error('Error checking session:', error)
@@ -76,6 +85,24 @@ function LoginContent() {
       subscription.unsubscribe()
     }
   }, [router, redirectTo])
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('full_name, profile_picture, bio')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else {
+        // Set profile data in state
+      }
+    };
+
+    fetchProfile();
+  }, [userId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -102,7 +129,7 @@ function LoginContent() {
       // Check if user has completed onboarding
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('onboarding_completed')
+        .select('*')
         .eq('id', data.session.user.id)
         .single()
 
@@ -111,8 +138,8 @@ function LoginContent() {
         throw new Error('Error checking profile. Please try again.')
       }
 
-      if (!profile?.onboarding_completed) {
-        router.push('/onboarding')
+      if (!profile) {
+        router.push('/create-profile')
       } else {
         router.push(redirectTo)
       }
